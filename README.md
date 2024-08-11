@@ -2,6 +2,8 @@
 
 A FastAPI-based chat application integrated with Groq to provide AI-driven responses and handle function calls. This application demonstrates how to set up a FastAPI service, connect to Groq, manage chat history, and process function calls in responses.
 
+## [Video Preview](https://drive.google.com/file/d/1OWkfnh3bdsyPkbcUQBfz7JHQEb2k8cyc/view?usp=sharing)
+
 ## Features
 
 - Interact with Groq's language model to generate responses.
