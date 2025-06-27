@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from './context/store';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,19 +8,82 @@ import Header from './components/Header';
 
 function App() {
   const [input, setInput] = useState('');
-  const { addMessage } = useStore();
+  const [isConnected, setIsConnected] = useState(false);
+  const { startStreaming, updateStreamingResponse, finishStreaming } = useStore();
+  const wsRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize WebSocket connection
+    const connectWebSocket = () => {
+      const ws = new WebSocket('ws://localhost:8000/ws');
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'ack':
+            console.log('Message acknowledged:', data.message);
+            break;
+          case 'chunk':
+            updateStreamingResponse(data.content);
+            break;
+          case 'complete':
+            finishStreaming();
+            break;
+          case 'error':
+            console.error('WebSocket error:', data.content);
+            finishStreaming();
+            break;
+          default:
+            console.log('Unknown message type:', data);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setIsConnected(false);
+        // Try to reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setIsConnected(false);
+      };
+    };
+
+    connectWebSocket();
+
+    // Cleanup on unmount
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [updateStreamingResponse, finishStreaming]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:8000/message', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ message: input }),
-    });
-    const data = await response.json();
-    addMessage(data);
+    
+    if (!isConnected) {
+      alert('Not connected to server. Please wait...');
+      return;
+    }
+
+    if (!input.trim()) return;
+
+    // Start streaming
+    startStreaming(input);
+    
+    // Send message via WebSocket
+    wsRef.current.send(JSON.stringify({ message: input }));
+    
     setInput('');
   };
 
@@ -36,18 +99,20 @@ function App() {
       >
         <div className='w-full max-w-xl flex items-center space-x-4 shadow-md'>
           <Input
-            placeholder="Enter your query..."
+            placeholder={isConnected ? "Enter your query..." : "Connecting..."}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className='w-full max-w-xl border-2 border-white rounded-md bg-slate-950 text-white py-3 px-4'
+            disabled={!isConnected}
           />
           <HoverBorderGradient
             containerClassName="rounded-full"
             as="button"
             className="dark:bg-black text-white dark:text-white flex items-center space-x-2"
+            disabled={!isConnected}
           >
-            Ask!
+            {isConnected ? "Ask!" : "Connecting..."}
           </HoverBorderGradient>
         </div>
       </form>

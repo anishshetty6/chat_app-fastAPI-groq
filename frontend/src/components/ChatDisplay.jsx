@@ -26,8 +26,11 @@ const ChatDisplay = () => {
                     </div>
 
                     <div className="text-gray-300">
-                        <p className="whitespace-pre-wrap break-words border border-gray-600  rounded-lg p-3 shadow-lg">
+                        <p className="whitespace-pre-wrap break-words border border-gray-600 rounded-lg p-3 shadow-lg">
                             {msg.response}
+                            {msg.isStreaming && (
+                                <span className="inline-block w-2 h-4 bg-white ml-1 animate-pulse"></span>
+                            )}
                         </p>
                     </div>
                 </div>
